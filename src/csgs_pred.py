@@ -109,12 +109,11 @@ def load_and_align_data(geno_path, pheno_path):
     if len(common_ids) == 0:
         raise ValueError("No matching entries found between Genotype 'ID' and Phenotype 'SampleID' columns.")
         
-    # Standardize, filter and align sequentially
     common_ids_sorted = sorted(list(common_ids))
     geno_temp = geno_temp.loc[common_ids_sorted]
     pheno_temp = pheno_temp.loc[common_ids_sorted]
     
-    # Isolate targets and marker features
+    # Isolate status targets and marker features
     y = pheno_temp["status_01"].to_numpy()
     ax_cols = [col for col in geno_temp.columns if col.startswith("AX")]
     X = geno_temp[ax_cols].to_numpy()

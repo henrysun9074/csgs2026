@@ -42,7 +42,7 @@ for entry in "${DATASETS[@]}"; do
     echo " -> Phenotype Input: ${FULL_PHENO_PATH}"
     echo " -> Saving Results To: /work/hs325/csgs2026/${TARGET_OUTDIR}/"
     
-    # Execute python run pointing to relative parent directory
+    # run script
     python3 ../csgs_pred.py \
         --genofile "$FULL_GENO_PATH" \
         --phenofile "$FULL_PHENO_PATH" \
