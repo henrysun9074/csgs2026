@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
-'''
-updated script for genomic selection status prediction Cape Shore GS 2026
-'''
+"""
+Updated script for genomic selection status prediction Cape Shore GS 2026.
+Optimized to run global hyperparameter tuning ONCE, then apply optimal parameters 
+across the 10x repeated 5-fold cross-validation loops.
+"""
 
 import os
 import json
@@ -30,8 +32,8 @@ parser.add_argument("--phenofile", "-p", type=str, required=True,
                     help="Path to the Phenotype CSV file")
 parser.add_argument("--outdir", "-o", type=str, required=True,
                     help="Subfolder name inside /work/hs325/csgs2026/ to save results")
-parser.add_argument("--hpt_iter", type=int, default=10,
-                    help="Number of Bayesian Optimization iterations per fold, defaults 10 for speed")
+parser.add_argument("--hpt_iter", type=int, default=50,
+                    help="Number of Global Bayesian Optimization iterations, defaults 50 for speed")
 parser.add_argument("--verbose", "-v", action="store_true", help="Enable verbose logging")
 args = parser.parse_args()
 
@@ -122,10 +124,16 @@ def load_and_align_data(geno_path, pheno_path):
     logger.info(f"Final aligned shape -> Features X: {X.shape}, Target y: {y.shape}")
     return X, y, ids
 
-def tune_within_fold(X_train, y_train, model_name, n_iter):
+
+# Global Hyperparameter Tuning Execution Block
+def run_global_tuning(X, y, model_name, n_iter):
     base_model, search_space = get_search_spaces()[model_name]
+    logger.info(f"--- Launching Global Tuning Sequence for {model_name} ({n_iter} iterations) ---")
     
-    # Standard internal 5-fold CV evaluation per HPT sequence
+    # Run dynamic scaling strictly on the tuning data representation
+    scaler = StandardScaler()
+    X_scaled = scaler.fit_transform(X)
+    
     opt = BayesSearchCV(
         estimator=base_model,
         search_spaces=search_space,
@@ -136,20 +144,43 @@ def tune_within_fold(X_train, y_train, model_name, n_iter):
         verbose=0,
         random_state=123
     )
-    opt.fit(X_train, y_train)
-    return opt.best_estimator_, opt.best_params_
+    opt.fit(X_scaled, y)
+    logger.info(f"[GLOBAL_OPTIMAL] {model_name} -> Best Score: {opt.best_score_:.4f}")
+    return opt.best_params_
 
 
-# --- Main Pipeline  ---
+# Helper to re-instantiate optimized model frameworks inside folds
+def build_model_with_params(name, params):
+    if name == "LR":
+        return LogisticRegression(max_iter=1000, solver="saga", **params)
+    elif name == "RF":
+        return RandomForestClassifier(n_jobs=-1, **params)
+    elif name == "GB":
+        return XGBClassifier(tree_method="hist", device="cuda", eval_metric="logloss", **params)
+    raise ValueError(f"Unknown framework model profile: {name}")
+
+
+# --- Main Pipeline ---
 def main():
     X, y, ids = load_and_align_data(args.genofile, args.phenofile)
+    model_names = list(get_search_spaces().keys())
     
-    # Track out-of-fold test predictions across iterations
-    # Map layout: {(sample_id, model_name): [list of test-fold predictions]}
+    # Run Global Hyperparameter tuning ONCE per architecture framework
+    global_optimal_parameters = {}
+    for name in model_names:
+        best_params = run_global_tuning(X, y, name, args.hpt_iter)
+        global_optimal_parameters[name] = best_params
+        print(f"[TUNED_PARAMS] Global Optimization Complete | {name} -> {best_params}")
+        
+    # Save the global parameters out for user audit records
+    with open(os.path.join(BASE_OUT_DIR, "global_best_hyperparams.json"), "w") as f:
+        json.dump(global_optimal_parameters, f, indent=4)
+        
+    # Production CV 
+    logger.info("10x Repeated 5-Fold Cross Validation")
+    
     test_predictions = defaultdict(list)
     all_metrics = []
-    
-    model_names = list(get_search_spaces().keys())
     
     # 10 Repetitions of Outer 5-Fold Cross Validation
     for repeat in range(10):
@@ -168,15 +199,14 @@ def main():
             X_test = scaler.transform(X_test)
             
             for name in model_names:
-                # Direct in-fold hyperparameter search
-                best_model, best_params = tune_within_fold(X_train, y_train, name, args.hpt_iter)
-                
-                print(f"[TUNED_PARAMS] Rep {repeat+1} Fold {fold+1} | {name} -> {best_params}")
+                # Build model directly using static parameter configs discovered in Phase 1
+                params = global_optimal_parameters[name]
+                model = build_model_with_params(name, params)
+                model.fit(X_train, y_train)
                 
                 # Generate out-of-fold predictions on isolated test subset
-                probs = best_model.predict_proba(X_test)[:, 1]
+                probs = model.predict_proba(X_test)[:, 1]
                 
-                # Append individual results to memory
                 for idx, sample_id in enumerate(ids_test):
                     test_predictions[(sample_id, name)].append(probs[idx])
                 
@@ -196,19 +226,16 @@ def main():
                     "PearsonR": r_val
                 })
 
-    # --- Compile and Export Results ---
     logger.info("Processing complete. Summarizing predictions and empirical metrics...")
     
     # Generate final GEBVs 
     final_records = []
     for sample_id in np.unique(ids):
-        # Match baseline status
         status_val = y[ids == sample_id][0]
         record = {"ID": sample_id, "Status": status_val}
         
         for name in model_names:
             preds = test_predictions[(sample_id, name)]
-            # If the animal was predicted across test variations, calculate statistical attributes
             if preds:
                 record[f"{name}_GEBV_Mean"] = np.mean(preds)
                 record[f"{name}_GEBV_SD"] = np.std(preds, ddof=1) if len(preds) > 1 else 0.0

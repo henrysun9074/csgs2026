@@ -1,0 +1,5 @@
+CUDA 12.8
+2026-06-02 23:41:52,028 INFO: Loading genotype and phenotype files...
+2026-06-02 23:42:07,682 INFO: Intersecting samples discovered: 947
+2026-06-02 23:42:07,920 INFO: Final aligned shape -> Features X: (947, 56087), Target y: (947,)
+2026-06-02 23:42:07,934 INFO: --- Launching Global Tuning Sequence for LR (50 iterations) ---

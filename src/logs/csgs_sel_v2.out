@@ -1,0 +1,7 @@
+Job started on: Tue Jun  2 11:41:04 PM EDT 2026
+Running from directory: /work/hs325/csgs2026/src/bash
+--------------------------------------------------
+Processing Population: sel_n9
+ -> Genotype Input:  /work/hs325/csgs2026/data/selectedlines/geno/sel_n9_geno.csv
+ -> Phenotype Input: /work/hs325/csgs2026/data/selectedlines/pheno/sel_n9_pheno.csv
+ -> Saving Results To: /work/hs325/csgs2026/gebvs_v2/sel_n9/
