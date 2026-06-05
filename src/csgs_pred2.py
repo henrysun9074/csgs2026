@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
 Updated script for genomic selection status prediction Cape Shore GS 2026.
-Optimized to run global hyperparameter tuning ONCE, then apply optimal parameters 
-across the 10x repeated 5-fold cross-validation loops.
+run global hyperparameter tuning ONCE, then apply optimal parameters 
+across the 10x repeated 5-fold cross-validation loops
 """
 
 import os

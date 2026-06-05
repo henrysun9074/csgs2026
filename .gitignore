@@ -1,3 +1,6 @@
 *.pptx
 *.csv
-/logs/
+/src/logs/
+*.err
+*.out
+*.log

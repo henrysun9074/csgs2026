@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 '''
-updated script for genomic selection status prediction Cape Shore GS 2026
+script for genomic selection status prediction Cape Shore GS 2026
 '''
 
 import os
