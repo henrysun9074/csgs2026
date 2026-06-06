@@ -32,3 +32,8 @@ Processing Population: wild_all
  -> Genotype Input:  /work/hs325/csgs2026/data/wildlines/geno/wild_all_geno.csv
  -> Phenotype Input: /work/hs325/csgs2026/data/wildlines/pheno/wild_all_pheno.csv
  -> Saving Results To: /work/hs325/csgs2026/gebvs_v2/wild_all/
+[TUNED_PARAMS] Global Optimization Complete | LR -> OrderedDict({'C': 0.023751416073309366, 'penalty': 'l1'})
+[TUNED_PARAMS] Global Optimization Complete | RF -> OrderedDict({'max_depth': 29, 'max_features': 'sqrt', 'min_samples_split': 2, 'n_estimators': 1205})
+[TUNED_PARAMS] Global Optimization Complete | GB -> OrderedDict({'colsample_bytree': 0.96677037070719, 'gamma': 0.0, 'learning_rate': 0.013817591131837467, 'max_depth': 13, 'min_child_weight': 4, 'n_estimators': 2000, 'subsample': 0.5389059802022609})
+Finished evaluating dataset: wild_all
+--------------------------------------------------
