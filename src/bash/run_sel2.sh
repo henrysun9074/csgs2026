@@ -1,9 +1,10 @@
 #!/bin/bash
 #SBATCH --job-name=csgs_sel_v2
 #SBATCH --partition=scavenger-gpu
+#SBATCH --gres=gpu:1 
+#SBATCH --exclusive
 #SBATCH --output=/work/hs325/csgs2026/src/logs/csgs_sel_v2.out
 #SBATCH --error=/work/hs325/csgs2026/src/logs/csgs_sel_v2.err
-#SBATCH --ntasks=1
 #SBATCH --cpus-per-task=16
 #SBATCH --mem=64G
 #SBATCH --time=7-00:00:00

@@ -26,11 +26,16 @@ wild_22dbw_metrics <- read.csv(file.path(data_dir, "wild_22dbw", "CrossValidatio
 wild_all_gebv    <- read.csv(file.path(data_dir, "wild_all", "Final_GEBVs_Summary.csv"))
 wild_all_metrics <- read.csv(file.path(data_dir, "wild_all", "CrossValidation_Metrics.csv"))
 
-
+# Add dataset for merging
 sel_n9_metrics     <- sel_n9_metrics     %>% mutate(Dataset = "Selected (N9)")
 sel_all_metrics    <- sel_all_metrics    %>% mutate(Dataset = "Selected (All)")
 wild_22dbw_metrics <- wild_22dbw_metrics %>% mutate(Dataset = "Wild (22dbw)")
 wild_all_metrics   <- wild_all_metrics   %>% mutate(Dataset = "Wild (All)")
+
+sel_n9_gebv     <- sel_n9_gebv     %>% mutate(Dataset = "Selected (N9)")
+sel_all_gebv    <- sel_all_gebv    %>% mutate(Dataset = "Selected (All)")
+wild_22dbw_gebv <- wild_22dbw_gebv %>% mutate(Dataset = "Wild (22dbw)")
+wild_all_gebv   <- wild_all_gebv   %>% mutate(Dataset = "Wild (All)")
 
 metrics_all <- bind_rows(sel_n9_metrics, sel_all_metrics, wild_22dbw_metrics, wild_all_metrics)
 gebv_all <- bind_rows(sel_n9_gebv, sel_all_gebv, wild_22dbw_gebv, wild_all_gebv)
@@ -161,3 +166,70 @@ results <- map_df(models, function(model_col) {
   )
 })
 print(results)
+
+
+### compute genetic gain simple function
+
+# for n9 gebv only
+wild_merged <- inner_join(
+  wild_22dbw_gebv, 
+  dbw_pheno, 
+  by = c("ID" = "SampleID")
+)
+
+living_dbw <- wild_merged %>% 
+  filter(status_01 == 1)
+
+models <- c("LR_GEBV_Mean", "RF_GEBV_Mean", "GB_GEBV_Mean")
+results <- map_df(models, function(model_col) {
+  gebv_vector <- living_dbw[[model_col]]
+  avg_all_living <- mean(gebv_vector, na.rm = TRUE)
+  top_30_living <- head(sort(gebv_vector, decreasing = TRUE), 30)
+  avg_top_30 <- mean(top_30_living, na.rm = TRUE)
+  gebv_ratio <- avg_top_30 / avg_all_living
+  tibble(
+    Model = gsub("_GEBV_Mean", "", model_col),
+    Avg_Top_30_Living = avg_top_30,
+    Avg_All_Living = avg_all_living,
+    GEBV_Ratio = gebv_ratio
+  )
+})
+print(results)
+
+
+### separate live vs dead
+pheno_lookup <- bind_rows(
+  n9_pheno  %>% select(SampleID, status_01),
+  dbw_pheno %>% select(SampleID, status_01)
+) %>% 
+  distinct(SampleID, .keep_all = TRUE) # Ensure unique IDs
+
+gebv_long_status <- gebv_long %>%
+  left_join(pheno_lookup, by = c("ID" = "SampleID")) %>%
+  filter(!is.na(status_01)) %>% 
+  mutate(Survival_Status = case_when(
+    status_01 == 0 ~ "Dead (0)",
+    status_01 == 1 ~ "Alive (1)",
+    TRUE ~ as.character(status_01)
+  ))
+
+
+#### plotting to separate live and dead
+p4 <- ggplot(gebv_long_status, aes(x = GEBV_Value, fill = Survival_Status)) +
+  geom_density(alpha = 0.3) + 
+  facet_grid(Dataset ~ Model, scales = "free") +
+  labs(
+    x = "GEBV", 
+    y = "Density",
+    fill = "Survival Status"
+  ) +
+  theme_pubr() +
+  scale_fill_manual(values = c("Dead (0)" = "#E41A1C", "Alive (1)" = "#377EB8")) + 
+  theme(
+    legend.position = "right",
+    panel.spacing.x = unit(1.5, "lines"), 
+    strip.text.x = element_text(face = "bold", size = 10),
+    strip.text.y = element_text(face = "bold", size = 10) 
+  )
+p4
+ggsave("vis/plot2.jpg", p4, width = 10, height = 8, dpi = 300)
