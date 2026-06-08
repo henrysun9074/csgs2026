@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 '''
 script for genomic selection status prediction Cape Shore GS 2026
+EDIT: DO NOT USE, the per-fold HPT is way too computationally intensive
 '''
 
 import os
