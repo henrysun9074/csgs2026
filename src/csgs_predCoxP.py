@@ -77,11 +77,11 @@ def get_search_spaces():
         "GB": (
             XGBRegressor(
                 tree_method="hist",
-                device="cuda",
+                device="cpu",
                 objective="reg:squarederror",
                 eval_metric="rmse",
-                random_state=123,
-            ),
+                random_state=123            
+                ),
             {
                 "n_estimators": Integer(100, 2000),
                 "max_depth": Integer(3, 15),
@@ -194,7 +194,7 @@ def build_model_with_params(name, params):
     elif name == "GB":
         return XGBRegressor(
             tree_method="hist",
-            device="cuda",
+            device="cpu",
             objective="reg:squarederror",
             eval_metric="rmse",
             random_state=123,

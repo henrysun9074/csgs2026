@@ -1,20 +1,16 @@
 #!/bin/bash
 #SBATCH --job-name=csgs_coxp
-#SBATCH --partition=scavenger-gpu
-#SBATCH --gres=gpu:1
-#SBATCH --exclusive
+#SBATCH --partition=schultzlab
 #SBATCH --output=/work/hs325/csgs2026/src/logs/csgs_coxp.out
 #SBATCH --error=/work/hs325/csgs2026/src/logs/csgs_coxp.err
-#SBATCH --cpus-per-task=16
-#SBATCH --mem=128G
+#SBATCH --cpus-per-task=10
+#SBATCH --mem=200G
 #SBATCH --time=7-00:00:00
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=hs325@duke.edu
 
 source /hpc/group/schultzlab/hs325/miniconda3/etc/profile.d/conda.sh
 conda activate gsAI
-
-module load CUDA
 
 echo "Job started on: $(date)"
 echo "Running from directory: $(pwd)"
@@ -35,7 +31,6 @@ HPT_ITERATIONS=50
 
 for entry in "${DATASETS[@]}"; do
 
-```
 IFS="|" read -r DF_NAME GENO_SUBPATH PHENO_SUBPATH <<< "$entry"
 
 TARGET_OUTDIR="gebvs_coxp/${DF_NAME}"
@@ -65,7 +60,6 @@ fi
 
 echo "Finished evaluating dataset: ${DF_NAME}"
 echo "--------------------------------------------------"
-```
 
 done
 
