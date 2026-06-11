@@ -139,65 +139,121 @@ cat(paste("Random Forest (RF):    ", round(wild_cor_rf, 4), "\n"))
 cat(paste("Gradient Boosting (GB):", round(wild_cor_gb, 4), "\n"))
 
 
-### compute genetic gain simple function
+### do this for all other groups 
+selall_pheno <- read.csv("data/selectedlines/pheno/sel_all_pheno.csv")
+selall_survival <- selall_pheno$status_01
+wildall_pheno <- read.csv("data/wildlines/pheno/wild_all_pheno.csv")
+wildall_survival <- wildall_pheno$status_01
 
-# for n9 gebv only
-sel_merged <- inner_join(
-  sel_n9_gebv, 
-  n9_pheno, 
+sel_group_merged <- inner_join(
+  sel_all_gebv, 
+  selall_pheno, 
   by = c("ID" = "SampleID")
 )
+sel_group_correlations <- sel_group_merged %>%
+  group_by(Group) %>%
+  summarize(
+    N_Animals = n(),
+    Cor_LR = round(cor(LR_GEBV_Mean, status_01, use = "complete.obs"), 4),
+    Cor_RF = round(cor(RF_GEBV_Mean, status_01, use = "complete.obs"), 4),
+    Cor_GB = round(cor(GB_GEBV_Mean, status_01, use = "complete.obs"), 4),
+    .groups = "drop"
+  )
 
-living_n9 <- sel_merged %>% 
-  filter(status_01 == 1)
+wild_group_merged <- inner_join(
+  wild_all_gebv, 
+  wildall_pheno, 
+  by = c("ID" = "SampleID")
+)
+wild_group_correlations <- wild_group_merged %>%
+  group_by(Group) %>%
+  summarize(
+    N_Animals = n(),
+    Cor_LR = round(cor(LR_GEBV_Mean, status_01, use = "complete.obs"), 4),
+    Cor_RF = round(cor(RF_GEBV_Mean, status_01, use = "complete.obs"), 4),
+    Cor_GB = round(cor(GB_GEBV_Mean, status_01, use = "complete.obs"), 4),
+    .groups = "drop"
+  )
 
-models <- c("LR_GEBV_Mean", "RF_GEBV_Mean", "GB_GEBV_Mean")
-results <- map_df(models, function(model_col) {
-  gebv_vector <- living_n9[[model_col]]
+ggplot(sel_group_merged, aes(x = LR_GEBV_Mean, y = status_01, color = Group)) +
+  geom_point(alpha = 0.3) +
+  scale_colour_brewer(palette = "Set2") +
+  geom_smooth(method = "lm", se = FALSE) +  # Within-group trendlines
+  geom_smooth(aes(group = 1), method = "lm", color = "black", linetype = "dashed", size = 1.2) + # Overall trendline
+  labs(subtitle = "Within-Group Trends vs. Overall Trend",
+       x = "Random Forest GEBV", y = "Survival Status") +
+  theme_pubr()
+# in general within group predictions are rough :(
+# but the correlation accuracy is better across the overall because the groups differ in average GEBV
+
+ggplot(wild_group_merged, aes(x = LR_GEBV_Mean, y = status_01, color = Group)) +
+  geom_point(alpha = 0.3) +
+  scale_colour_brewer(palette = "Set3") +
+  geom_smooth(method = "lm", se = FALSE) +  # Within-group trendlines
+  geom_smooth(aes(group = 1), method = "lm", color = "black", linetype = "dashed", size = 1.2) + # Overall trendline
+  labs(subtitle = "Within-Group Trends vs. Overall Trend",
+       x = "LR GEBV", y = "Survival Status") +
+  theme_pubr()
+
+
+### compute genetic gain simple function
+compute_genetic_gain <- function(data, group_name, model_pipeline_label) {
+  # Filter down to survivors only
+  living_data <- data %>% filter(status_01 == 1)
+  
+  models <- c("LR_GEBV_Mean", "RF_GEBV_Mean", "GB_GEBV_Mean")
+  
+  map_df(models, function(model_col) {
+    gebv_vector <- living_data[[model_col]]
+    
     avg_all_living <- mean(gebv_vector, na.rm = TRUE)
-  top_30_living <- head(sort(gebv_vector, decreasing = TRUE), 30)
-  avg_top_30 <- mean(top_30_living, na.rm = TRUE)
-  gebv_ratio <- avg_top_30 / avg_all_living
-  tibble(
-    Model = gsub("_GEBV_Mean", "", model_col),
-    Avg_Top_30_Living = avg_top_30,
-    Avg_All_Living = avg_all_living,
-    GEBV_Ratio = gebv_ratio
-  )
-})
-print(results)
+    top_30_living  <- head(sort(gebv_vector, decreasing = TRUE), 30)
+    avg_top_30     <- mean(top_30_living, na.rm = TRUE)
+    gebv_ratio     <- avg_top_30 / avg_all_living
+    
+    tibble(
+      Cohort       = group_name,
+      Pipeline     = model_pipeline_label,
+      Model        = gsub("_GEBV_Mean", "", model_col),
+      Avg_All      = round(avg_all_living, 4),
+      Avg_Top_30   = round(avg_top_30, 4),
+      GEBV_Ratio   = round(gebv_ratio, 4)
+    )
+  })
+}
 
+sel_single_data <- sel_n9_gebv %>% 
+  filter(Dataset == "Selected (N9)") %>% 
+  inner_join(n9_pheno, by = c("ID" = "SampleID"))
 
-### compute genetic gain simple function
+sel_pooled_data <- sel_all_gebv %>% 
+  filter(Dataset == "Selected (All)") %>% 
+  inner_join(selall_pheno, by = c("ID" = "SampleID")) %>% 
+  filter(Group == "22N9")
 
-# for n9 gebv only
-wild_merged <- inner_join(
-  wild_22dbw_gebv, 
-  dbw_pheno, 
-  by = c("ID" = "SampleID")
+sel_single_gain <- compute_genetic_gain(sel_single_data, "Selected (22N9)", "Single")
+sel_pooled_gain <- compute_genetic_gain(sel_pooled_data, "Selected (22N9)", "Pooled")
+
+wild_single_data <- wild_22dbw_gebv %>% 
+  filter(Dataset == "Wild (22dbw)") %>% 
+  inner_join(dbw_pheno, by = c("ID" = "SampleID"))
+
+wild_pooled_data <- wild_all_gebv %>% 
+  filter(Dataset == "Wild (All)") %>% 
+  inner_join(wildall_pheno, by = c("ID" = "SampleID")) %>% 
+  filter(Group == "22DBW")
+
+wild_single_gain <- compute_genetic_gain(wild_single_data, "Wild (22DBW)", "Single")
+wild_pooled_gain <- compute_genetic_gain(wild_pooled_data, "Wild (22DBW)", "Pooled")
+
+final_gain_summary <- bind_rows(
+  sel_single_gain, sel_pooled_gain,
+  wild_single_gain, wild_pooled_gain
 )
-
-living_dbw <- wild_merged %>% 
-  filter(status_01 == 1)
-
-models <- c("LR_GEBV_Mean", "RF_GEBV_Mean", "GB_GEBV_Mean")
-results <- map_df(models, function(model_col) {
-  gebv_vector <- living_dbw[[model_col]]
-  avg_all_living <- mean(gebv_vector, na.rm = TRUE)
-  top_30_living <- head(sort(gebv_vector, decreasing = TRUE), 30)
-  avg_top_30 <- mean(top_30_living, na.rm = TRUE)
-  gebv_ratio <- avg_top_30 / avg_all_living
-  tibble(
-    Model = gsub("_GEBV_Mean", "", model_col),
-    Avg_Top_30_Living = avg_top_30,
-    Avg_All_Living = avg_all_living,
-    GEBV_Ratio = gebv_ratio
-  )
-})
-print(results)
+print(as.data.frame(final_gain_summary), row.names = FALSE)
 
 
-### separate live vs dead
+### separate live vs dead in density plots
 pheno_lookup <- bind_rows(
   n9_pheno  %>% select(SampleID, status_01),
   dbw_pheno %>% select(SampleID, status_01)
@@ -232,4 +288,147 @@ p4 <- ggplot(gebv_long_status, aes(x = GEBV_Value, fill = Survival_Status)) +
     strip.text.y = element_text(face = "bold", size = 10) 
   )
 p4
-ggsave("vis/plot2.jpg", p4, width = 10, height = 8, dpi = 300)
+
+## but how different are GEBV rankings between single vs pooled run
+sel_single_22n9 <- sel_n9_gebv %>% filter(Dataset == "Selected (N9)")
+sel_pooled_22n9 <- sel_all_gebv %>%
+  filter(Dataset == "Selected (All)") %>%
+  inner_join(selall_pheno, by = c("ID" = "SampleID")) %>%
+  filter(Group == "22N9") 
+
+rank_single <- sel_single_22n9 %>%
+  mutate(Rank_Single = rank(desc(RF_GEBV_Mean))) %>%
+  select(ID, Rank_Single)
+
+rank_pooled <- sel_pooled_22n9 %>%
+  mutate(Rank_Pooled = rank(desc(RF_GEBV_Mean))) %>%
+  select(ID, Rank_Pooled)
+
+sel_22n9_compare <- inner_join(rank_single, rank_pooled, by = "ID")
+top_50_ids <- sel_22n9_compare %>%
+  filter(Rank_Single <= 50 | Rank_Pooled <= 50) %>%
+  pull(ID)
+
+heatmap_data_sel <- sel_22n9_compare %>%
+  filter(ID %in% top_50_ids) %>%
+  pivot_longer(cols = c(Rank_Single, Rank_Pooled), 
+               names_to = "Run_Type", 
+               values_to = "Rank") %>%
+  mutate(Run_Type = recode(Run_Type, "Rank_Single" = "Single Run (N9)", "Rank_Pooled" = "Pooled Run (Within-Cohort)"))
+
+heatmap_data_sel$ID <- factor(heatmap_data_sel$ID, 
+                              levels = sel_22n9_compare %>% 
+                                filter(ID %in% top_50_ids) %>% 
+                                arrange(Rank_Single) %>% 
+                                pull(ID))
+ggplot(heatmap_data_sel, aes(x = Run_Type, y = ID, fill = Rank)) +
+  geom_tile(color = "white", size = 0.1) +
+  scale_fill_viridis_c(direction = -1, option = "mako", name = "Cohort Rank") +
+  theme_minimal() +
+  labs(title = "GEBV Ranks (22N9)",
+       x = "Training Data", y = "Oyster ID") +
+  theme(axis.text.y = element_text(size = 6), panel.grid = element_blank())
+
+## average difference in gebvs and average rank shift for top 50
+sel_single_22n9 <- sel_n9_gebv %>% filter(Dataset == "Selected (N9)")
+sel_pooled_22n9 <- sel_all_gebv %>%
+  filter(Dataset == "Selected (All)") %>%
+  inner_join(selall_pheno, by = c("ID" = "SampleID")) %>%
+  filter(Group == "22N9")
+
+sel_compare <- inner_join(
+  sel_single_22n9 %>% mutate(Rank_Single = rank(desc(RF_GEBV_Mean))) %>% select(ID, Rank_Single, GEBV_Single = RF_GEBV_Mean),
+  sel_pooled_22n9 %>% mutate(Rank_Pooled = rank(desc(RF_GEBV_Mean))) %>% select(ID, Rank_Pooled, GEBV_Pooled = RF_GEBV_Mean),
+  by = "ID"
+)
+sel_top50_metrics <- sel_compare %>%
+  filter(Rank_Single <= 50) %>%
+  mutate(
+    GEBV_Raw_Diff = GEBV_Pooled - GEBV_Single,
+    GEBV_Abs_Diff = abs(GEBV_Pooled - GEBV_Single),
+    Rank_Shift    = abs(Rank_Pooled - Rank_Single)
+  ) %>%
+  summarize(
+    Cohort = "Selected (22N9) - Top 50 Only",
+    Oysters_Evaluated = n(),
+    Avg_Raw_GEBV_Diff = mean(GEBV_Raw_Diff),
+    Avg_Abs_GEBV_Diff = mean(GEBV_Abs_Diff),
+    Avg_Rank_Shift    = mean(Rank_Shift),
+    Max_Rank_Shift    = max(Rank_Shift)
+  )
+sel_top50_metrics
+
+## but how different are GEBV rankings between single vs pooled run for wild
+wild_single_dbw <- wild_22dbw_gebv %>% filter(Dataset == "Wild (22dbw)")
+
+wild_pooled_dbw <- wild_all_gebv %>%
+  filter(Dataset == "Wild (All)") %>%
+  inner_join(wildall_pheno, by = c("ID" = "SampleID")) %>%
+  filter(Group == "22DBW") 
+
+rank_single_wild <- wild_single_dbw %>%
+  mutate(Rank_Single = rank(desc(RF_GEBV_Mean))) %>%
+  select(ID, Rank_Single)
+
+rank_pooled_wild <- wild_pooled_dbw %>%
+  mutate(Rank_Pooled = rank(desc(RF_GEBV_Mean))) %>%
+  select(ID, Rank_Pooled)
+
+wild_dbw_compare <- inner_join(rank_single_wild, rank_pooled_wild, by = "ID")
+top_50_wild_ids <- wild_dbw_compare %>%
+  filter(Rank_Single <= 50 | Rank_Pooled <= 50) %>%
+  pull(ID)
+
+heatmap_data_wild <- wild_dbw_compare %>%
+  filter(ID %in% top_50_wild_ids) %>%
+  pivot_longer(cols = c(Rank_Single, Rank_Pooled), 
+               names_to = "Run_Type", 
+               values_to = "Rank") %>%
+  mutate(Run_Type = recode(Run_Type, "Rank_Single" = "Single Run (22DBW)", "Rank_Pooled" = "Pooled Run (Within-Cohort)"))
+
+heatmap_data_wild$ID <- factor(heatmap_data_wild$ID, 
+                               levels = wild_dbw_compare %>% 
+                                 filter(ID %in% top_50_wild_ids) %>% 
+                                 arrange(Rank_Single) %>% 
+                                 pull(ID))
+
+ggplot(heatmap_data_wild, aes(x = Run_Type, y = ID, fill = Rank)) +
+  geom_tile(color = "white", size = 0.1) +
+  scale_fill_viridis_c(direction = -1, option = "plasma", name = "Cohort Rank") +
+  theme_minimal() +
+  labs(title = "GEBV Ranks (22DBW)",
+       x = "Model Framework", y = "Oyster ID") +
+  theme(axis.text.y = element_text(size = 6), panel.grid = element_blank())
+
+wild_single_dbw <- wild_22dbw_gebv %>% filter(Dataset == "Wild (22dbw)")
+wild_pooled_dbw <- wild_all_gebv %>%
+  filter(Dataset == "Wild (All)") %>%
+  inner_join(wildall_pheno, by = c("ID" = "SampleID")) %>%
+  filter(Group == "22DBW")
+
+wild_compare <- inner_join(
+  wild_single_dbw %>% mutate(Rank_Single = rank(desc(RF_GEBV_Mean))) %>% select(ID, Rank_Single, GEBV_Single = RF_GEBV_Mean),
+  wild_pooled_dbw %>% mutate(Rank_Pooled = rank(desc(RF_GEBV_Mean))) %>% select(ID, Rank_Pooled, GEBV_Pooled = RF_GEBV_Mean),
+  by = "ID"
+)
+
+wild_top50_metrics <- wild_compare %>%
+  filter(Rank_Single <= 50) %>%
+  mutate(
+    GEBV_Raw_Diff = GEBV_Pooled - GEBV_Single,
+    GEBV_Abs_Diff = abs(GEBV_Pooled - GEBV_Single),
+    Rank_Shift    = abs(Rank_Pooled - Rank_Single)
+  ) %>%
+  summarize(
+    Cohort = "Wild (22DBW) - Top 50 Only",
+    Oysters_Evaluated = n(),
+    Avg_Raw_GEBV_Diff = mean(GEBV_Raw_Diff),
+    Avg_Abs_GEBV_Diff = mean(GEBV_Abs_Diff),
+    Avg_Rank_Shift    = mean(Rank_Shift),
+    Max_Rank_Shift    = max(Rank_Shift)
+  )
+
+all_gebv_metrics <- rbind(wild_top50_metrics, sel_top50_metrics)
+all_gebv_metrics$Avg_Raw_GEBV_Diff <- NULL
+all_gebv_metrics$Oysters_Evaluated <- NULL
+all_gebv_metrics
