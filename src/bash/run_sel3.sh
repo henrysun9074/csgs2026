@@ -23,8 +23,6 @@ DATA_ROOT="/work/hs325/csgs2026/data"
 DATASETS=(
 "sel_n9|selectedlines/geno/sel_n9_geno.csv|selectedlines/pheno/sel_n9_pheno.csv"
 "sel_all|selectedlines/geno/sel_all_geno.csv|selectedlines/pheno/sel_all_pheno.csv"
-"wild_22dbw|wildlines/geno/wild_22dbw_geno.csv|wildlines/pheno/wild_22dbw_pheno.csv"
-"wild_all|wildlines/geno/wild_all_geno.csv|wildlines/pheno/wild_all_pheno.csv"
 )
 
 HPT_ITERATIONS=50
@@ -33,7 +31,7 @@ for entry in "${DATASETS[@]}"; do
 
 IFS="|" read -r DF_NAME GENO_SUBPATH PHENO_SUBPATH <<< "$entry"
 
-TARGET_OUTDIR="gebvs_coxp/${DF_NAME}"
+TARGET_OUTDIR="gebvs_coxp_corr/${DF_NAME}"
 
 FULL_GENO_PATH="${DATA_ROOT}/${GENO_SUBPATH}"
 FULL_PHENO_PATH="${DATA_ROOT}/${PHENO_SUBPATH}"
@@ -44,7 +42,7 @@ echo " -> Phenotype Input: ${FULL_PHENO_PATH}"
 echo " -> Output Directory: /work/hs325/csgs2026/${TARGET_OUTDIR}"
 echo ""
 
-python3 ../csgs_predCoxP.py \
+python3 ../csgs_predCoxP_corr.py \
     --genofile "${FULL_GENO_PATH}" \
     --phenofile "${FULL_PHENO_PATH}" \
     --outdir "${TARGET_OUTDIR}" \

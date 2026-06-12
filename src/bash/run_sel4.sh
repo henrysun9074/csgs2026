@@ -31,7 +31,7 @@ for entry in "${DATASETS[@]}"; do
 
 IFS="|" read -r DF_NAME GENO_SUBPATH PHENO_SUBPATH <<< "$entry"
 
-TARGET_OUTDIR="gebvs_coxp/${DF_NAME}"
+TARGET_OUTDIR="gebvs_coxp_corr/${DF_NAME}"
 
 FULL_GENO_PATH="${DATA_ROOT}/${GENO_SUBPATH}"
 FULL_PHENO_PATH="${DATA_ROOT}/${PHENO_SUBPATH}"
@@ -42,7 +42,7 @@ echo " -> Phenotype Input: ${FULL_PHENO_PATH}"
 echo " -> Output Directory: /work/hs325/csgs2026/${TARGET_OUTDIR}"
 echo ""
 
-python3 ../csgs_predCoxP.py \
+python3 ../csgs_predCoxP_corr.py \
     --genofile "${FULL_GENO_PATH}" \
     --phenofile "${FULL_PHENO_PATH}" \
     --outdir "${TARGET_OUTDIR}" \
