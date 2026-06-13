@@ -368,15 +368,16 @@ wild_v1_pooled <- wild_all_gebv %>%
   inner_join(wildall_pheno, by = c("ID" = "SampleID")) %>% 
   filter(Group == "22DBW")
 
+# keeping the lowest = best rank fix we applied previously
 sel_v1_compare <- inner_join(
-  sel_v1_single %>% mutate(Rank_Sing_v1 = rank(RF_GEBV_Mean)) %>% select(ID, Rank_Sing_v1, GEBV_Sing_v1 = RF_GEBV_Mean),
-  sel_v1_pooled %>% mutate(Rank_Pool_v1 = rank(RF_GEBV_Mean)) %>% select(ID, Rank_Pool_v1, GEBV_Pool_v1 = RF_GEBV_Mean, Group),
+  sel_v1_single %>% mutate(Rank_Sing_v1 = rank(desc(RF_GEBV_Mean))) %>% select(ID, Rank_Sing_v1, GEBV_Sing_v1 = RF_GEBV_Mean),
+  sel_v1_pooled %>% mutate(Rank_Pool_v1 = rank(desc(RF_GEBV_Mean))) %>% select(ID, Rank_Pool_v1, GEBV_Pool_v1 = RF_GEBV_Mean, Group),
   by = "ID"
 )
 
 wild_v1_compare <- inner_join(
-  wild_v1_single %>% mutate(Rank_Sing_v1 = rank(RF_GEBV_Mean)) %>% select(ID, Rank_Sing_v1, GEBV_Sing_v1 = RF_GEBV_Mean),
-  wild_v1_pooled %>% mutate(Rank_Pool_v1 = rank(RF_GEBV_Mean)) %>% select(ID, Rank_Pool_v1, GEBV_Pool_v1 = RF_GEBV_Mean, Group),
+  wild_v1_single %>% mutate(Rank_Sing_v1 = rank(desc(RF_GEBV_Mean))) %>% select(ID, Rank_Sing_v1, GEBV_Sing_v1 = RF_GEBV_Mean),
+  wild_v1_pooled %>% mutate(Rank_Pool_v1 = rank(desc(RF_GEBV_Mean))) %>% select(ID, Rank_Pool_v1, GEBV_Pool_v1 = RF_GEBV_Mean, Group),
   by = "ID"
 )
 
@@ -384,7 +385,9 @@ all_v1_ranks <- rbind(wild_v1_compare, sel_v1_compare)
 
 ### compare to Status GEBVs
 all_v2_ranks_raw <- readRDS("gebvs_v2/statusGEBVranks.rds")
+
 all_v2_ranks <- all_v2_ranks_raw %>%
+  filter(status_01 == 1) %>%  # <-- keep only organisms that survived
   select(ID, 
          Rank_Sing_v2 = Rank_Single, GEBV_Sing_v2 = GEBV_Single,
          Rank_Pool_v2 = Rank_Pooled, GEBV_Pool_v2 = GEBV_Pooled)
@@ -402,3 +405,46 @@ cross_trait_metrics <- cross_trait_master %>%
     .groups = "drop"
   )
 print(as.data.frame(cross_trait_metrics))
+
+# plot this
+plot_cross_data <- cross_trait_master %>% filter(Group == "22N9")
+
+## singleton 22N9
+ggplot(plot_cross_data, aes(x = Rank_Sing_v1, y = Rank_Sing_v2)) +
+  geom_point(color = "dodgerblue", size = 3, alpha = 0.8) +
+  geom_text(aes(label = ID), size = 2, vjust = -1, check_overlap = TRUE) +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "grey50") +
+  theme_pubr() +
+  labs(title = "22N9 singleton correlation",
+       x = "Cox rank",
+       y = "Status rank")
+
+## pooled 22N9
+ggplot(plot_cross_data, aes(x = Rank_Pool_v1, y = Rank_Pool_v2)) +
+  geom_point(color = "dodgerblue4", size = 3, alpha = 0.8) +
+  geom_text(aes(label = ID), size = 2, vjust = -1, check_overlap = TRUE) +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "grey50") +
+  theme_pubr() +
+  labs(title = "22N9 pooled correlation",
+       x = "Cox rank",
+       y = "Status rank")
+
+plot_cross_data <- cross_trait_master %>% filter(Group == "22DBW")
+ggplot(plot_cross_data, aes(x = Rank_Sing_v1, y = Rank_Sing_v2)) +
+  geom_point(color = "gold", size = 3, alpha = 0.8) +
+  geom_text(aes(label = ID), size = 2, vjust = -1, check_overlap = TRUE) +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "grey50") +
+  theme_pubr() +
+  labs(title = "22DBW singleton correlation",
+       x = "Cox rank",
+       y = "Status rank")
+
+## pooled 22N9
+ggplot(plot_cross_data, aes(x = Rank_Pool_v1, y = Rank_Pool_v2)) +
+  geom_point(color = "goldenrod3", size = 3, alpha = 0.8) +
+  geom_text(aes(label = ID), size = 2, vjust = -1, check_overlap = TRUE) +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "grey50") +
+  theme_pubr() +
+  labs(title = "22DBW pooled correlation",
+       x = "Cox rank",
+       y = "Status rank")
