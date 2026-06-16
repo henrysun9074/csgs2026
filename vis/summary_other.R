@@ -79,3 +79,25 @@ print(as.data.frame(master_wild_table), row.names = FALSE)
 
 write.table(master_selected_table, "vis/master_selected_filtered.txt", sep="\t", row.names=FALSE, quote=FALSE)
 write.table(master_wild_table, "vis/master_wild_filtered.txt", sep="\t", row.names=FALSE, quote=FALSE)
+
+######## recalculate 21dw
+wild_all_gebv_status <- read.csv("gebvs_coxp/wild_all/Final_GEBVs_Summary.csv")
+wildall_pheno        <- read.csv("data/wildlines/pheno/wild_all_pheno.csv")
+
+pheno_21DW <- wildall_pheno %>%
+  filter(Group == "21DW") %>%
+  select(SampleID, status_01)
+
+# Join GEBVs to phenotype status
+gebv_21DW <- wild_all_gebv_status %>%
+  inner_join(pheno_21DW, by = c("ID" = "SampleID"))
+
+# Pearson correlations with status_01
+cor_results <- gebv_21DW %>%
+  summarise(
+    RR_cor = cor(RR_GEBV_Mean, status_01, use = "complete.obs", method = "pearson"),
+    EN_cor = cor(EN_GEBV_Mean, status_01, use = "complete.obs", method = "pearson"),
+    RF_cor = cor(RF_GEBV_Mean, status_01, use = "complete.obs", method = "pearson"),
+    GB_cor = cor(GB_GEBV_Mean, status_01, use = "complete.obs", method = "pearson")
+  )
+cor_results
