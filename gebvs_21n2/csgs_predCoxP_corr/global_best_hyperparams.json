@@ -1,0 +1,25 @@
+{
+    "RR": {
+        "alpha": 100.0
+    },
+    "EN": {
+        "alpha": 0.16336294922260797,
+        "l1_ratio": 0.6211566837015643
+    },
+    "RF": {
+        "max_depth": 11,
+        "max_features": 0.8,
+        "min_samples_leaf": 8,
+        "min_samples_split": 15,
+        "n_estimators": 185
+    },
+    "GB": {
+        "colsample_bytree": 0.9037332973416505,
+        "gamma": 5.0,
+        "learning_rate": 0.009721449150542601,
+        "max_depth": 14,
+        "min_child_weight": 8,
+        "n_estimators": 2000,
+        "subsample": 0.5
+    }
+}
