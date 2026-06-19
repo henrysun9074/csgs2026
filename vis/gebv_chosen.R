@@ -50,6 +50,8 @@ chosen_sel  <- chosen_sel  %>% mutate(ID_clean = sub("_.*", "", ID))
 
 target_cols <- c("ID_clean", "rank_up", "rank_down", "GB_GEBV_Mean", "GB_GEBV_SD", "phenotype_gwas", "status_01")
 
+
+# figure out what is getting dropped here... should be 39
 final_chosen_wild <- chosen_wild %>% 
   left_join(
     wild_combined %>% select(any_of(target_cols)), 
@@ -78,21 +80,32 @@ final_chosen_wild <- final_chosen_wild %>%
 final_chosen_sel <- final_chosen_sel %>%
   inner_join(sel_gwas_lookup, by = "ID_clean")
 
-#### NOTES
-# 22N9-D: why didn't we take Y144 (lowest GEBV of survivors + was listed available)
+final_chosen <- rbind(final_chosen_wild, final_chosen_sel)
 
-# 22DBW-D: check 355_DBW - why did we take this one? wrote down wrong # by mistake? 
-# should probably be M355 -- double check and update CSV if so
+growth <- read_excel("data/spawn/growth_data.xlsx")
+growth$Tag <- toupper(growth$Tag)
+colnames(growth)[4] <- "ID_clean"
+growth <- growth %>% 
+  mutate(ID_clean = str_pad(as.character(ID_clean), width = 3, pad = "0"))
+
+final_chosen <- final_chosen %>%
+  left_join(
+    growth %>% select(ID_clean, Height, Weight), 
+    by = "ID_clean"
+  )
+
+write.csv("")
 
 ############# analysis TBD
-# get alyssa to share 6/17 size + weight data. compare between groups
+# compare size/weight between groups
 # look at difference in size/weight from last workover between up and downselect
 # compare growth rates from previous workovers
+# look at breeding values if we had done phenotypic selection (top 30 highest/lowest weight + growth)
 
 # look where model predictions would have differed along three axes: 
 # 1) solo vs pooled training
 # 2) status vs cox
-# 3) different model architectures
+# 3) different model architectures - need to read in separate files
 
 # get survival data - compare model accuracies from last workover to spawn: how many mortalities? 
 # did those oysters that died have low GEBV?
