@@ -94,7 +94,7 @@ final_chosen <- final_chosen %>%
     by = "ID_clean"
   )
 
-write.csv("")
+write.csv(final_chosen, "data/spawn/chosen_oysters.csv")
 
 ############# analysis TBD
 # compare size/weight between groups

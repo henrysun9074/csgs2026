@@ -101,3 +101,44 @@ cor_results <- gebv_21DW %>%
     GB_cor = cor(GB_GEBV_Mean, status_01, use = "complete.obs", method = "pearson")
   )
 cor_results
+
+
+#################### gebvs for surviving n2s
+target_ids <- c("Z260", "Z210", "Z248", "Z243", "Z361", "Y102", "Y182", "Y177", "Y199")
+
+n2_status_filtered <- read.csv("gebvs_21n2/csgs_pred2/Final_GEBVs_Summary.csv") %>%
+  filter(ID %in% target_ids) %>%
+  select(ID, LR = LR_GEBV_Mean, RF = RF_GEBV_Mean, GB = GB_GEBV_Mean) %>%
+  mutate(Scenario = "N2_Only", Type = "Status")
+
+sel_all_status_filtered <- read.csv("gebvs_v2/sel_all/Final_GEBVs_Summary.csv") %>%
+  filter(ID %in% target_ids) %>%
+  select(ID, LR = LR_GEBV_Mean, RF = RF_GEBV_Mean, GB = GB_GEBV_Mean) %>%
+  mutate(Scenario = "Pooled", Type = "Status")
+
+# Cox Models (RR, EN, RF, GB)
+n2_cox_filtered <- read.csv("gebvs_21n2/csgs_predCoxP_corr/Final_GEBVs_Summary.csv") %>%
+  filter(ID %in% target_ids) %>%
+  select(ID, RR = RR_GEBV_Mean, EN = EN_GEBV_Mean, RF = RF_GEBV_Mean, GB = GB_GEBV_Mean) %>%
+  mutate(Scenario = "N2_Only", Type = "Cox")
+
+sel_all_cox_filtered <- read.csv("gebvs_coxp/sel_all/Final_GEBVs_Summary.csv") %>%
+  filter(ID %in% target_ids) %>%
+  select(ID, RR = RR_GEBV_Mean, EN = EN_GEBV_Mean, RF = RF_GEBV_Mean, GB = GB_GEBV_Mean) %>%
+  mutate(Scenario = "Pooled", Type = "Cox")
+
+combined_df <- bind_rows(n2_status_filtered, sel_all_status_filtered, n2_cox_filtered, sel_all_cox_filtered)
+
+n2_df <- combined_df %>%
+  tidyr::pivot_longer(
+    cols = c(LR, RF, GB, RR, EN), 
+    names_to = "Model", 
+    values_to = "GEBV"
+  ) %>%
+  filter(!is.na(GEBV)) %>% 
+  tidyr::pivot_wider(
+    names_from = ID, 
+    values_from = GEBV
+  ) %>%
+  select(Scenario, Type, Model, everything())
+
