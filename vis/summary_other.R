@@ -141,4 +141,4 @@ n2_df <- combined_df %>%
     values_from = GEBV
   ) %>%
   select(Scenario, Type, Model, everything())
-
+# can compare these to dead and other survivors
