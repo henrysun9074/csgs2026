@@ -1,6 +1,7 @@
 *.pptx
 *.csv
 /src/logs/
+/gebvs_paul/
 *.err
 *.out
 *.log
