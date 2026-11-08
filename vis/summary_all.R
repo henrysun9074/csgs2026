@@ -12,6 +12,8 @@ library(cowplot)
 #   master_corr  : one row per setting x model (CV corr, focal-group sample corr, gain)
 #   master_gebv  : long table of GEBVs for every animal x setting x model
 
+setwd("/work/hs325/csgs2026")
+
 # =============================================================================
 # generate master tables from individual model outputs
 
@@ -166,4 +168,85 @@ library(cowplot)
 
 ### load in outputs
 master_corr <- read.table("vis/master_correlations.txt", sep = "\t", header = TRUE)
-master_gebv <- read.table("vis/master_correlations.txt", sep = "\t", header = TRUE)
+master_gebv <- read.table("vis/master_gebvs.txt", sep = "\t", header = TRUE)
+
+# Summary statistics of prediction results, separately for 22DBW and 22N9
+corr_tbl <- master_corr
+
+metric_cols <- c("Correlation", "CV_Correlation", "Sample_Cor", "gain_top30")
+
+summarise_metrics <- function(df, ...) {
+  df %>%
+    group_by(...) %>%
+    summarise(
+      n_models = n(),
+      across(all_of(metric_cols),
+             list(mean = ~ mean(.x, na.rm = TRUE),
+                  sd   = ~ sd(.x, na.rm = TRUE),
+                  min  = ~ if (all(is.na(.x))) NA_real_ else min(.x, na.rm = TRUE),
+                  max  = ~ if (all(is.na(.x))) NA_real_ else max(.x, na.rm = TRUE)),
+             .names = "{.col}_{.fn}"),
+      .groups = "drop"
+    ) %>%
+    mutate(across(where(is.numeric) & !n_models, ~ round(.x, 4)))
+}
+
+for (grp in c("22DBW", "22N9")) {
+  grp_df <- corr_tbl %>% filter(group == grp)
+
+  cat("\n\n#################### ", grp, " ####################\n", sep = "")
+  print(as.data.frame(summarise_metrics(grp_df)), row.names = FALSE)
+  print(as.data.frame(summarise_metrics(grp_df, prediction)), row.names = FALSE)
+  print(as.data.frame(summarise_metrics(grp_df, dataset)), row.names = FALSE)
+  print(as.data.frame(summarise_metrics(grp_df, model_set)), row.names = FALSE)
+
+  grp_df %>%
+    group_by(prediction, dataset, model_set) %>%
+    summarise(n_models  = n(),
+              mean_corr = round(mean(Correlation, na.rm = TRUE), 4),
+              sd_corr   = round(sd(Correlation, na.rm = TRUE), 4),
+              best_model = if (all(is.na(Correlation))) NA_character_ else Model[which.max(Correlation)],
+              best_corr  = if (all(is.na(Correlation))) NA_real_ else max(Correlation, na.rm = TRUE),
+              .groups = "drop") %>%
+    as.data.frame() %>%
+    print(row.names = FALSE)
+
+}
+
+# compare prediction accuracy within each model from pooling vs not pooling (when available)
+pool_vs_solo <- master_corr %>%
+  select(group, prediction, model_set, Model, dataset, Correlation, Sample_Cor) %>%
+  pivot_wider(names_from = dataset, values_from = c(Correlation, Sample_Cor)) %>%
+  filter(!is.na(Correlation_Solo), !is.na(Correlation_Pooled)) %>%
+  mutate(
+    diff_Correlation = Correlation_Pooled - Correlation_Solo,
+    diff_Sample_Cor  = Sample_Cor_Pooled  - Sample_Cor_Solo,
+    better_Sample_Cor = if_else(diff_Sample_Cor > 0, "Pooled", "Solo")
+  ) %>%
+  select(group, prediction, model_set, Model,
+         Correlation_Solo, Correlation_Pooled, diff_Correlation,
+         Sample_Cor_Solo, Sample_Cor_Pooled, diff_Sample_Cor, better_Sample_Cor) %>%
+  arrange(group, prediction, model_set, Model)
+
+cat("\n\n=== Pooled vs Solo, per model (diff = Pooled - Solo) ===\n")
+print(as.data.frame(pool_vs_solo), row.names = FALSE)
+
+summarise_pool_gain <- function(df, ...) {
+  df %>%
+    group_by(...) %>%
+    summarise(
+      n_pairs               = n(),
+      n_pooled_better       = sum(diff_Sample_Cor > 0),
+      mean_diff_Sample_Cor  = round(mean(diff_Sample_Cor), 4),
+      median_diff_Sample_Cor = round(median(diff_Sample_Cor), 4),
+      mean_diff_Correlation = round(mean(diff_Correlation), 4),
+      # paired Wilcoxon signed-rank test
+      wilcox_p = if (n() >= 3) round(wilcox.test(Sample_Cor_Pooled, Sample_Cor_Solo,
+                                                 paired = TRUE, exact = FALSE)$p.value, 4)
+                 else NA_real_,
+      .groups = "drop"
+    )
+}
+
+print(as.data.frame(summarise_pool_gain(pool_vs_solo, group)), row.names = FALSE)
+print(as.data.frame(summarise_pool_gain(pool_vs_solo, group, prediction, model_set)), row.names = FALSE)
