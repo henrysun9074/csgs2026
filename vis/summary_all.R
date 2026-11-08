@@ -250,3 +250,6 @@ summarise_pool_gain <- function(df, ...) {
 
 print(as.data.frame(summarise_pool_gain(pool_vs_solo, group)), row.names = FALSE)
 print(as.data.frame(summarise_pool_gain(pool_vs_solo, group, prediction, model_set)), row.names = FALSE)
+
+################ save outputs
+write_csv(corr_tbl, "data/corr_tbl_8nov.csv")
