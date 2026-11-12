@@ -17,25 +17,25 @@ setwd("/work/hs325/csgs2026")
 # =============================================================================
 # generate master tables from individual model outputs
 
-# --- Settings table (from "Model Summary - training runs") -------------------
-# R model paths are given as dir + file prefix (the "*" glob in the summary sheet).
-# NOTE: sheet lists gebvs_coxp_corr/sel_22n9, but the folder on disk is sel_n9.
+# RKHS only exists for 22N9 Cox Pooled but new Cox runs have BRR + BayesB only
+# R 22DBW Cox Solo was trained on CoxP from wild_all_pheno (pooled Cox fit) but this has r = 0.996 to solo Cox fit
+
 # settings <- tribble(
 #   ~group,  ~prediction, ~dataset, ~model_set,  ~path,                                  ~prefix,
 #   "22DBW", "Status",    "Solo",   "ML models", "gebvs_v2/wild_22dbw",                  NA,
-#   "22DBW", "Status",    "Solo",   "R models",  "gebvs_paul/wildGEBVs",                 "22DBW",
+#   "22DBW", "Status",    "Solo",   "R models",  "gebvs_paul/wildGEBVs/Status",          "22DBW",
 #   "22DBW", "Status",    "Pooled", "ML models", "gebvs_v2/wild_all",                    NA,
-#   "22DBW", "Status",    "Pooled", "R models",  "gebvs_paul/wildGEBVs",                 "Wild",
+#   "22DBW", "Status",    "Pooled", "R models",  "gebvs_paul/wildGEBVs/Status",          "Wild",
 #   "22DBW", "Cox",       "Solo",   "ML models", "gebvs_coxp_corr/wild_22dbw",           NA,
-#   "22DBW", "Cox",       "Solo",   "R models",  NA,                                     NA,
+#   "22DBW", "Cox",       "Solo",   "R models",  "gebvs_paul/wildGEBVs/CoxP",            "22DBW",
 #   "22DBW", "Cox",       "Pooled", "ML models", "gebvs_coxp_corr/wild_all",             NA,
-#   "22DBW", "Cox",       "Pooled", "R models",  NA,                                     NA,
+#   "22DBW", "Cox",       "Pooled", "R models",  "gebvs_paul/wildGEBVs/CoxP",            "Wild",
 #   "22N9",  "Status",    "Solo",   "ML models", "gebvs_v2/sel_n9",                      NA,
 #   "22N9",  "Status",    "Solo",   "R models",  "gebvs_paul/selectedGEBVs/Status",      "22N9",
 #   "22N9",  "Status",    "Pooled", "ML models", "gebvs_v2/sel_all",                     NA,
 #   "22N9",  "Status",    "Pooled", "R models",  "gebvs_paul/selectedGEBVs/Status",      "SelectionLines",
 #   "22N9",  "Cox",       "Solo",   "ML models", "gebvs_coxp_corr/sel_n9",               NA,
-#   "22N9",  "Cox",       "Solo",   "R models",  NA,                                     NA,
+#   "22N9",  "Cox",       "Solo",   "R models",  "gebvs_paul/selectedGEBVs/CoxP",        "22N9",
 #   "22N9",  "Cox",       "Pooled", "ML models", "gebvs_coxp_corr/sel_all",              NA,
 #   "22N9",  "Cox",       "Pooled", "R models",  "gebvs_paul/selectedGEBVs/CoxP",        "SelectionLines"
 # ) %>%
