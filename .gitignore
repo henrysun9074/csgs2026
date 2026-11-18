@@ -2,8 +2,11 @@
 *.csv
 /src/logs/
 /gebvs_paul/
+/gwas_out/
 *.err
 *.out
 *.log
 .Rproj.user
 *.txt
+*.map
+*.ped

@@ -3,24 +3,15 @@ library(ggpubr)
 library(cowplot)
 
 # Master summary across all training settings
-#   group      : focal cohort the model is evaluated on (22DBW / 22N9)
-#   prediction : training phenotype (Status/Cox)
-#   dataset    : solo/pooled
-#   model_set  : ML models (python pipeline) / R models
-#
-# Outputs
-#   master_corr  : one row per setting x model (CV corr, focal-group sample corr, gain)
-#   master_gebv  : long table of GEBVs for every animal x setting x model
-#   master_cv_repeats : CV correlation for each of the 10 CV repeats (10 rows per setting x model)
+# group: wild/selected
+# prediction: status/cox
+# dataset: solo/pooled
+# model_set: ML/R models
 
 setwd("/work/hs325/csgs2026")
 
-# =============================================================================
 # generate master tables from individual model outputs
-
 # RKHS only exists for 22N9 Cox Pooled but new Cox runs have BRR + BayesB only
-# R 22DBW Cox Solo uses the "22DBWSolo" run, trained on Cox values fitted on 22DBW only
-# (the older "22DBWCoxP" run used the pooled wild Cox fit and is no longer used)
 
 settings <- tribble(
   ~group,  ~prediction, ~dataset, ~model_set,  ~path,                                  ~prefix,
@@ -78,8 +69,9 @@ load_gebv_r <- function(path, prefix) {
     rename(GEBV = Mean, GEBV_SD = SD)
 }
 
-# # LOAD CV CORRELATIONS
-# # ML: mean PearsonR over the 5 folds within each repeat
+################ LOAD CV CORRELATIONS ################
+
+# ML models
 load_cv_ml <- function(path) {
   read.csv(file.path(path, "CrossValidation_Metrics.csv")) %>%
     mutate(Model = gsub("_GEBV_Mean", "", Model)) %>%
@@ -87,7 +79,7 @@ load_cv_ml <- function(path) {
     summarise(CV_Correlation = mean(PearsonR, na.rm = TRUE), .groups = "drop")
 }
 
-# # R: whole-sample cor of out-of-fold predictions with the training phenotype, per repeat
+# R models
 load_cv_r <- function(path, prefix, prediction) {
   target_col <- if (prediction == "Status") "Status" else "CoxP"
   trad   <- read.csv(r_trad_file(path, prefix))
@@ -120,7 +112,7 @@ master_gebv <- available %>%
   }) %>%
   select(all_of(key_cols), Model, ID, Group, in_focal_group, GEBV, GEBV_SD, status_01, phenotype_gwas)
 
-# # CV correlations: per repeat, then averaged over repeats
+## compute CV correlations
 master_cv_repeats <- available %>%
   pmap_df(function(group, prediction, dataset, model_set, path, prefix, ...) {
     cv <- if (model_set == "ML models") load_cv_ml(path) else load_cv_r(path, prefix, prediction)
@@ -133,9 +125,7 @@ cv_all <- master_cv_repeats %>%
   group_by(across(all_of(key_cols)), Model) %>%
   summarise(CV_Correlation = mean(CV_Correlation, na.rm = TRUE), .groups = "drop")
 
-# # Focal-group sample correlation + genetic gain
-# # Sample_Cor : cor(GEBV, status_01) within focal group (as in summary_status/cox)
-# # gain_top30 : mean GEBV of top 30 survivors / mean GEBV of all survivors (focal group)
+## compute correlations for selected groups + genetic gain metric (top 30 ... not reliable)
 focal_metrics <- master_gebv %>%
   filter(in_focal_group) %>%
   group_by(across(all_of(key_cols)), Model) %>%
@@ -149,7 +139,7 @@ focal_metrics <- master_gebv %>%
     .groups = "drop"
   )
 
-# # Correlation
+# final correlation metrics
 master_corr <- focal_metrics %>%
   left_join(cv_all, by = c(key_cols, "Model")) %>%
   mutate(
@@ -160,10 +150,10 @@ master_corr <- focal_metrics %>%
   mutate(across(all_of(key_cols), as.character)) %>%
   arrange(group, prediction, dataset, model_set, Model)
 
-# # Settings with no results (NA paths), for reference
+# NA paths
 missing_settings <- settings %>% filter(is.na(path)) %>% select(all_of(key_cols))
 
-# # output
+# save
 print(as.data.frame(master_corr), row.names = FALSE)
 cat("\nSettings without results:\n")
 print(as.data.frame(missing_settings), row.names = FALSE)
@@ -174,14 +164,14 @@ write.table(master_cv_repeats %>% mutate(CV_Correlation = round(CV_Correlation, 
             "vis/master_cv_repeats.txt", sep = "\t", row.names = FALSE, quote = FALSE)
 
 
-### load in outputs
+#################################################################################
+
+### load in outputs for summary statistics
 master_corr <- read.table("vis/master_correlations.txt", sep = "\t", header = TRUE)
 master_gebv <- read.table("vis/master_gebvs.txt", sep = "\t", header = TRUE)
 master_cv_repeats <- read.table("vis/master_cv_repeats.txt", sep = "\t", header = TRUE)
 
-# Summary statistics of prediction results, separately for 22DBW and 22N9
 corr_tbl <- master_corr
-
 metric_cols <- c("Correlation", "CV_Correlation", "Sample_Cor", "gain_top30")
 
 summarise_metrics <- function(df, ...) {
